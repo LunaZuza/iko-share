@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import TripDetailModal from '../components/TripDetailModal';
 
 function MyTrips({ currentUser }) {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeChatTrip, setActiveChatTrip] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [tab, setTab] = useState('driver'); // 'driver' | 'passenger'
+  const [detailTrip, setDetailTrip] = useState(null);
 
   useEffect(() => {
     fetchTrips();
@@ -34,41 +34,44 @@ function MyTrips({ currentUser }) {
     }
   };
 
-  const openChat = async (trip) => {
-    setActiveChatTrip(trip);
-    try {
-      const res = await api.get(`/trips/${trip.id}/messages`);
-      setMessages(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
-    try {
-      const res = await api.post(`/trips/${activeChatTrip.id}/messages`, { message: newMessage });
-      setMessages([...messages, { ...res.data, full_name: currentUser?.full_name, avatar_url: currentUser?.avatar_url }]);
-      setNewMessage('');
-    } catch (err) {
-      alert('ส่งข้อความล้มเหลว');
-    }
-  };
+  const driverTrips = trips.filter((t) => t.user_role_in_trip === 'driver');
+  const passengerTrips = trips.filter((t) => t.user_role_in_trip === 'passenger');
+  const visibleTrips = tab === 'driver' ? driverTrips : passengerTrips;
 
   if (loading) return <div style={{ textAlign: 'center', marginTop: 100, color: 'var(--text-muted)' }}>กำลังโหลด...</div>;
 
+  const tabStyle = (active) => ({
+    padding: '10px 20px',
+    borderRadius: 14,
+    fontSize: 14,
+    fontWeight: 700,
+    cursor: 'pointer',
+    border: 'none',
+    color: active ? '#fff' : 'var(--text-muted)',
+    background: active ? 'var(--accent)' : 'var(--bg-surface)',
+    boxShadow: active ? 'none' : '6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light)',
+  });
+
   return (
     <div style={{ maxWidth: 900, margin: '40px auto', padding: '0 20px' }}>
-      <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 28 }}>📋 ทริปที่ฉันสร้าง</h1>
+      <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 24 }}>📋 ทริปของฉัน</h1>
 
-      {trips.length === 0 ? (
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        <button style={tabStyle(tab === 'driver')} onClick={() => setTab('driver')}>
+          🚗 ทริปที่ฉันสร้าง ({driverTrips.length})
+        </button>
+        <button style={tabStyle(tab === 'passenger')} onClick={() => setTab('passenger')}>
+          🧍 ทริปที่ฉันเข้าร่วม ({passengerTrips.length})
+        </button>
+      </div>
+
+      {visibleTrips.length === 0 ? (
         <div className="neu-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-          คุณยังไม่ได้สร้างทริปใดๆ
+          {tab === 'driver' ? 'คุณยังไม่ได้สร้างทริปใดๆ' : 'คุณยังไม่ได้เข้าร่วมทริปใดๆ'}
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 20 }}>
-          {trips.map((trip) => (
+          {visibleTrips.map((trip) => (
             <div key={trip.id} className="neu-card" style={{ padding: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                 <div>
@@ -79,12 +82,14 @@ function MyTrips({ currentUser }) {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => openChat(trip)} className="neu-btn" style={{ padding: '8px 14px', fontSize: 13 }}>
-                    💬 แชทกลุ่ม
+                  <button onClick={() => setDetailTrip(trip)} className="neu-btn" style={{ padding: '8px 14px', fontSize: 13 }}>
+                    💬 ดูรายละเอียด / แชท
                   </button>
-                  <button onClick={() => handleDeleteTrip(trip.id)} className="neu-btn-danger" style={{ padding: '8px 14px', fontSize: 13 }}>
-                    🗑️ ลบทริป
-                  </button>
+                  {trip.user_role_in_trip === 'driver' && (
+                    <button onClick={() => handleDeleteTrip(trip.id)} className="neu-btn-danger" style={{ padding: '8px 14px', fontSize: 13 }}>
+                      🗑️ ลบทริป
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -92,35 +97,8 @@ function MyTrips({ currentUser }) {
         </div>
       )}
 
-      {activeChatTrip && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 1000 }}>
-          <div className="neu-card" style={{ width: '100%', maxWidth: 500, height: 600, padding: 24, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700 }}>💬 แชทกลุ่ม: {activeChatTrip.destination}</h3>
-              <button onClick={() => setActiveChatTrip(null)} className="neu-btn" style={{ padding: '4px 10px', fontSize: 12 }}>ปิด</button>
-            </div>
-
-            <div className="neu-inset-deep" style={{ flex: 1, padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, borderRadius: 20, marginBottom: 16 }}>
-              {messages.length === 0 && (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: 20 }}>ยังไม่มีข้อความ</div>
-              )}
-              {messages.map((m) => {
-                const isMe = m.user_id === currentUser?.id;
-                return (
-                  <div key={m.id} className={isMe ? 'chat-bubble-me' : 'chat-bubble-other'}>
-                    <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2, fontWeight: 700 }}>{m.full_name}</div>
-                    <div style={{ fontSize: 14 }}>{m.message}</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 10 }}>
-              <input className="neu-input" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="พิมพ์ข้อความ..." style={{ flex: 1 }} />
-              <button type="submit" className="neu-btn-primary" style={{ padding: '10px 18px' }}>ส่ง</button>
-            </form>
-          </div>
-        </div>
+      {detailTrip && (
+        <TripDetailModal tripId={detailTrip.id} currentUser={currentUser} onClose={() => setDetailTrip(null)} />
       )}
     </div>
   );

@@ -13,7 +13,7 @@ const generateToken = (user) => {
 // POST /api/auth/register — สมัครสมาชิก
 exports.register = async (req, res) => {
   try {
-    const { full_name, email, password, avatar_url } = req.body;
+    const { full_name, email, password, avatar_url, phone, role } = req.body;
 
     if (!full_name || !email || !password) {
       return res.status(400).json({ error: 'กรุณากรอกชื่อ อีเมล และรหัสผ่านให้ครบถ้วน' });
@@ -28,11 +28,12 @@ exports.register = async (req, res) => {
     }
 
     const password_hash = await bcrypt.hash(password, 10);
+    const safeRole = ['Driver', 'Passenger', 'Both'].includes(role) ? role : 'Both';
     const result = await pool.query(
-      `INSERT INTO users (full_name, email, password_hash, avatar_url, bio)
-       VALUES ($1, $2, $3, $4, '')
-       RETURNING id, full_name, email, avatar_url, bio, created_at`,
-      [full_name, email, password_hash, avatar_url || null]
+      `INSERT INTO users (full_name, email, password_hash, avatar_url, bio, phone, role)
+       VALUES ($1, $2, $3, $4, '', $5, $6)
+       RETURNING id, full_name, email, avatar_url, bio, phone, role, created_at`,
+      [full_name, email, password_hash, avatar_url || null, phone || null, safeRole]
     );
 
     const user = result.rows[0];
@@ -77,7 +78,7 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, full_name, email, avatar_url, bio, created_at FROM users WHERE id = $1',
+      'SELECT id, full_name, email, avatar_url, bio, phone, role, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     if (result.rows.length === 0) {

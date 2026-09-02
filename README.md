@@ -1,8 +1,9 @@
 # 🚗 Iko Share — ระบบแชร์ค่าเดินทาง (Carpool Sharing)
 
-เว็บแอปพลิเคชันแชร์ค่าเดินทาง สร้างด้วย **React + Node.js Express + PostgreSQL**
+เว็บแอปพลิเคชันแชร์ค่าเดินทาง สร้างด้วย **React + Node.js Express + PostgreSQL (Neon)**
 รองรับสมัครสมาชิก / เข้าสู่ระบบด้วย Email + Password (JWT), สร้างทริป, เข้าร่วมทริป,
-ดูโปรไฟล์ + เรตติ้ง, และแชทกลุ่มภายในทริป — พร้อมสไตล์ **Soft Neumorphism**
+ดูโปรไฟล์ + เรตติ้ง, ดูสมาชิกในทริป, และแชทกลุ่มแบบ real-time ด้วย **Socket.IO**
+(เฉพาะสมาชิกทริป — ผู้ขับ + ผู้โดยสารที่ยืนยันแล้ว — เท่านั้นที่เข้าแชทได้) — พร้อมสไตล์ **Soft Neumorphism**
 
 ## 📁 โครงสร้างโปรเจค
 ```
@@ -10,8 +11,9 @@ carpool/
 ├── backend/                 # Node.js Express API
 │   ├── src/
 │   │   ├── server.js        # Entry point + Config (CORS, Helmet, Rate limit)
+│   │   ├── socket.js        # Socket.IO — auth + membership chat
 │   │   ├── config/db.js     # PostgreSQL connection (DATABASE_URL aware)
-│   │   ├── middleware/auth.js      # verifyToken (JWT)
+│   │   ├── middleware/auth.js      # verifyToken + optionalAuth (JWT)
 │   │   ├── controllers/     # auth / trip / user
 │   │   ├── routes/          # authRoutes / tripRoutes / userRoutes
 │   │   └── migrations/      # 001_create_tables.sql + run.js
@@ -21,9 +23,9 @@ carpool/
 └── frontend/                # React (Create React App)
     ├── src/
     │   ├── App.js
-    │   ├── components/Navbar.js
+    │   ├── components/      # Navbar.js, TripDetailModal.jsx
     │   ├── pages/           # Home / Login / CreateTrip / MyTrips / Profile
-    │   ├── services/api.js  # Axios + JWT interceptor
+    │   ├── services/        # api.js (Axios+JWT), socket.js (Socket.IO client)
     │   └── index.css        # Neumorphism styles
     ├── vercel.json
     ├── .env.example
@@ -90,17 +92,33 @@ npm start            # เปิด http://localhost:3000
 - ให้ URL ของ Frontend ที่ได้ตั้งเป็น `FRONTEND_URL` ใน Render Backend (เพื่อ CORS)
 - ตรวจว่า `/api/health` ของ backend ใช้งานได้
 
+## 🗄️ Database Schema (v2 — ตรง ER Diagram)
+- **USER** — `user_id`, `name`, `email`, `phone`, `role` (Driver/Passenger/Both) + auth fields
+- **CAR** — `license_plate` (PK), `user_id`, `model`, `capacity`
+- **EVENT** — `event_id`, `event_name`, `location`, `event_date`, `category`
+- **TRIP** — `trip_id`, `license_plate` (FK→CAR), `event_id` (FK→EVENT), `origin`, `destination`, `available_seats`, `price_seat`
+- **BOOKING** — `booking_id`, `user_id`, `trip_id`, `booking_status` (pending/confirmed/cancelled), `location`, `booking_time`
+- ยังคงมี **`trip_messages`** (chat) และ **`user_ratings`** (รีวิว) สำหรับฟีเจอร์เดิม
+
 ## 🔌 API Reference (ตาม Spec)
 | Method | Route | คำอธิบาย |
 |--------|-------|----------|
 | POST | `/api/auth/register` | สมัครสมาชิก (คืน JWT) |
 | POST | `/api/auth/login` | เข้าสู่ระบบ (คืน JWT) |
-| GET | `/api/trips` | ดึงทริปทั้งหมด (รวม `driver_name`, `driver_id`) |
+| GET | `/api/trips` | ดึงทริปทั้งหมด (รวม `driver_name`, `driver_id`, `user_role_in_trip`) |
 | POST | `/api/trips` | สร้างทริปใหม่ (ต้อง auth) |
-| POST | `/api/trips/:id/join` | เข้าร่วมทริป (ลด `available_seats`) |
+| GET | `/api/trips/:id` | รายละเอียดทริป + สมาชิกทั้งหมด (driver + passengers ที่ confirmed) |
+| POST | `/api/trips/:id/join` | เข้าร่วมทริป (สร้าง booking + ลด `available_seats`) |
 | DELETE | `/api/trips/:id` | ลบทริป (เฉพาะเจ้าของ) |
-| GET | `/api/trips/:id/messages` | ดึงข้อความแชทในทริป |
-| POST | `/api/trips/:id/messages` | ส่งข้อความแชทในทริป |
-| GET | `/api/users/profile/:id` | ข้อมูลผู้ใช้ + `avg_rating`, `total_reviews` |
+| GET | `/api/trips/my-trips` | ทริปที่ฉันสร้าง + ทริปที่ฉันเข้าร่วม (มี `user_role_in_trip`) |
+| GET | `/api/trips/joined` | ทริปที่ฉันเข้าร่วมเป็นผู้โดยสาร (compat) |
+| GET | `/api/trips/:id/messages` | ดึงแชท (เฉพาะสมาชิกทริป) |
+| POST | `/api/trips/:id/messages` | ส่งแชท (เฉพาะสมาชิกทริป) |
+| GET | `/api/users/profile/:id` | ข้อมูลผู้ใช้ + `phone`, `role`, `avg_rating`, `total_reviews` |
 | GET | `/api/users/:id` | Route สำรองกัน 404 |
-| PUT | `/api/users/profile` | อัปเดต bio (เฉพาะผู้ใช้ปัจจุบัน) |
+| PUT | `/api/users/profile` | อัปเดต bio / phone / role (เฉพาะผู้ใช้ปัจจุบัน) |
+
+## 💬 Real-time Chat (Socket.IO)
+- Client เชื่อมต่อที่ host เดียวกับ API (ตัด `/api` ออก) พร้อมยืนยัน JWT ผ่าน `auth.token`
+- เฉพาะ **สมาชิกทริป** (ผู้ขับ หรือผู้โดยสารที่มี `BOOKING` สถานะ `confirmed`) เท่านั้นที่ `joinTrip` / `sendMessage` ได้
+- เหตุการณ์: `joinTrip`, `leaveTrip`, `sendMessage`, `message` (broadcast)

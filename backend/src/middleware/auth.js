@@ -34,4 +34,20 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-module.exports = { verifyToken };
+// optionalAuth: ตรวจ token ถ้ามีก็ใส่ req.user แต่ไม่บล็อกถ้าไม่มี (ใช้กับ route สาธารณะ)
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.header('Authorization');
+  const token = authHeader?.replace('Bearer ', '') || req.cookies?.token;
+  if (!token) return next();
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = { id: decoded.id, email: decoded.email };
+    req.userId = decoded.id;
+    req.userEmail = decoded.email;
+  } catch (error) {
+    // token ไม่ถูกต้อง — ปล่อยผ่านแบบไม่ระบุตัวตน
+  }
+  next();
+};
+
+module.exports = { verifyToken, optionalAuth };

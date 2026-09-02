@@ -3,7 +3,7 @@ const pool = require('../config/db');
 // ประกอบข้อมูลโปรไฟล์ + คะแนนรีวิว
 const buildProfile = async (id) => {
   const userResult = await pool.query(
-    'SELECT id, full_name, email, avatar_url, bio, created_at FROM users WHERE id = $1',
+    'SELECT id, full_name, email, avatar_url, bio, phone, role, created_at FROM users WHERE id = $1',
     [id]
   );
   if (userResult.rows.length === 0) return null;
@@ -55,8 +55,13 @@ exports.getUserById = async (req, res) => {
 // PUT /api/users/profile — อัปเดต bio (เฉพาะผู้ใช้ปัจจุบัน)
 exports.updateBio = async (req, res) => {
   try {
-    const { bio } = req.body;
-    await pool.query('UPDATE users SET bio = $1 WHERE id = $2', [bio || '', req.user.id]);
+    const { bio, phone, role } = req.body;
+    const safeRole = ['Driver', 'Passenger', 'Both'].includes(role) ? role : null;
+
+    await pool.query(
+      'UPDATE users SET bio = $1, phone = COALESCE($2, phone), role = COALESCE($3, role) WHERE id = $4',
+      [bio || '', phone || null, safeRole, req.user.id]
+    );
     res.json({ message: 'อัปเดตโปรไฟล์สำเร็จ' });
   } catch (error) {
     console.error('Update bio error:', error);

@@ -1,41 +1,104 @@
--- ============================================
--- Iko Share · Carpool Sharing Database Schema
--- ============================================
+-- ============================================================
+-- Iko Share · Carpool Sharing — Schema v2 (ER Diagram aligned)
+-- USER · CAR · EVENT · TRIP · BOOKING (+ chat / ratings)
+--
+-- NOTE: นี่คือ clean re-create migration ใช้ได้กับ DB ใหม่ (Neon)
+-- หรือ DB เก่า (จะลบตารางชุดเดิมแล้วสร้างใหม่ให้ตรง ER Diagram)
+-- ============================================================
 
--- ตารางผู้ใช้งาน
+-- === ลบตารางเดิมตามลำดับที่ปลอดภัยจาก Foreign Key (idempotent) ===
+DROP TABLE IF EXISTS trip_passengers CASCADE;
+DROP TABLE IF EXISTS trip_messages CASCADE;
+DROP TABLE IF EXISTS user_ratings CASCADE;
+DROP TABLE IF EXISTS trips CASCADE;
+DROP TABLE IF EXISTS cars CASCADE;
+DROP TABLE IF EXISTS events CASCADE;
+
+-- ============================================================
+-- 1. USER
+-- ============================================================
 CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  full_name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
+  id SERIAL PRIMARY KEY,                       -- user_id
+  full_name VARCHAR(100) NOT NULL,             -- name
+  email VARCHAR(100) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,         -- สำหรับ JWT auth (extend นอก ER)
+  phone VARCHAR(15),
+  role VARCHAR(20) NOT NULL DEFAULT 'Both',    -- 'Driver' | 'Passenger' | 'Both'
   avatar_url TEXT,
   bio TEXT DEFAULT '',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(15);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'Both';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+DO $$ BEGIN
+  ALTER TABLE users ADD CONSTRAINT users_role_check
+    CHECK (role IN ('Driver', 'Passenger', 'Both'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- ตารางทริปเดินทาง
-CREATE TABLE IF NOT EXISTS trips (
-  id SERIAL PRIMARY KEY,
-  driver_id INT REFERENCES users(id) ON DELETE CASCADE,
-  origin VARCHAR(255) NOT NULL,
-  destination VARCHAR(255) NOT NULL,
-  price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-  seats INT NOT NULL DEFAULT 1,
-  available_seats INT NOT NULL DEFAULT 1,
-  departure_time TIMESTAMP,
+-- ============================================================
+-- 2. CAR
+-- ============================================================
+CREATE TABLE IF NOT EXISTS cars (
+  license_plate VARCHAR(100) PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  model VARCHAR(50),
+  capacity INT NOT NULL DEFAULT 4,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_cars_user ON cars(user_id);
+
+-- ============================================================
+-- 3. EVENT
+-- ============================================================
+CREATE TABLE IF NOT EXISTS events (
+  event_id SERIAL PRIMARY KEY,
+  event_name VARCHAR(150) NOT NULL,
+  location VARCHAR(255),
+  event_date TIMESTAMP,
+  category VARCHAR(50),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ตารางผู้ร่วมเดินทาง
-CREATE TABLE IF NOT EXISTS trip_passengers (
-  id SERIAL PRIMARY KEY,
-  trip_id INT REFERENCES trips(id) ON DELETE CASCADE,
-  user_id INT REFERENCES users(id) ON DELETE CASCADE,
-  joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+-- ============================================================
+-- 4. TRIP
+-- ============================================================
+CREATE TABLE IF NOT EXISTS trips (
+  id SERIAL PRIMARY KEY,                         -- trip_id
+  driver_id INT REFERENCES users(id) ON DELETE CASCADE,
+  license_plate VARCHAR(100) REFERENCES cars(license_plate) ON DELETE SET NULL,
+  event_id INT REFERENCES events(event_id) ON DELETE SET NULL,
+  origin VARCHAR(255) NOT NULL,
+  destination VARCHAR(255) NOT NULL,
+  available_seats INT NOT NULL DEFAULT 1,
+  seats INT NOT NULL DEFAULT 1,                 -- จำนวนที่นั่งทั้งหมด (extend)
+  price_seat DECIMAL(9,2) NOT NULL DEFAULT 0,   -- ราคาต่อที่นั่ง
+  departure_time TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_trips_driver ON trips(driver_id);
+CREATE INDEX IF NOT EXISTS idx_trips_plate ON trips(license_plate);
+CREATE INDEX IF NOT EXISTS idx_trips_event ON trips(event_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_trips_license_plate ON trips(license_plate);
+
+-- ============================================================
+-- 5. BOOKING
+-- ============================================================
+CREATE TABLE IF NOT EXISTS bookings (
+  booking_id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  booking_status VARCHAR(20) NOT NULL DEFAULT 'pending',  -- 'pending' | 'confirmed' | 'cancelled'
+  location VARCHAR(255),
+  booking_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(trip_id, user_id)
 );
+CREATE INDEX IF NOT EXISTS idx_bookings_trip ON bookings(trip_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_user ON bookings(user_id);
 
--- ตารางข้อความแชทกลุ่มทริป
+-- ============================================================
+-- 6. TRIP MESSAGES (chat กลุ่มทริป)
+-- ============================================================
 CREATE TABLE IF NOT EXISTS trip_messages (
   id SERIAL PRIMARY KEY,
   trip_id INT REFERENCES trips(id) ON DELETE CASCADE,
@@ -43,8 +106,11 @@ CREATE TABLE IF NOT EXISTS trip_messages (
   message TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS idx_messages_trip ON trip_messages(trip_id);
 
--- ตารางรีวิวและคะแนน
+-- ============================================================
+-- 7. USER RATINGS (คะแนน + รีวิว)
+-- ============================================================
 CREATE TABLE IF NOT EXISTS user_ratings (
   id SERIAL PRIMARY KEY,
   rater_id INT REFERENCES users(id),
@@ -54,11 +120,4 @@ CREATE TABLE IF NOT EXISTS user_ratings (
   comment TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
--- Indexes สำหรับการค้นหา
-CREATE INDEX IF NOT EXISTS idx_trips_driver ON trips(driver_id);
-CREATE INDEX IF NOT EXISTS idx_trips_departure ON trips(departure_time);
-CREATE INDEX IF NOT EXISTS idx_passengers_trip ON trip_passengers(trip_id);
-CREATE INDEX IF NOT EXISTS idx_passengers_user ON trip_passengers(user_id);
-CREATE INDEX IF NOT EXISTS idx_messages_trip ON trip_messages(trip_id);
 CREATE INDEX IF NOT EXISTS idx_ratings_rated ON user_ratings(rated_user_id);

@@ -65,7 +65,13 @@ function Profile({ currentUser }) {
         </div>
 
         <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>{profile.full_name || profile.name}</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>{profile.email}</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 4 }}>{profile.email}</p>
+        {profile.phone && <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>📞 {profile.phone}</p>}
+        {profile.role && (
+          <span className="neu-inset" style={{ display: 'inline-block', marginTop: 8, padding: '3px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>
+            {profile.role === 'Driver' ? '🚗 ผู้ขับรถ' : profile.role === 'Passenger' ? '🧍 ผู้โดยสาร' : '🚗🧍 ขับ & โดยสาร'}
+          </span>
+        )}
 
         {/* ระบบคะแนนดาว */}
         <div className="neu-inset" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 20px', borderRadius: 999, marginBottom: 28 }}>

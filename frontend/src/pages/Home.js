@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import TripDetailModal from '../components/TripDetailModal';
 
-function Home() {
+function Home({ currentUser }) {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [detailTrip, setDetailTrip] = useState(null);
 
   useEffect(() => {
     fetchTrips();
@@ -49,7 +51,6 @@ function Home() {
       ) : (
         <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
           {trips.map((trip) => {
-            // แปลงราคาเป็นตัวเลขเสมอ เพื่อป้องกัน NaN
             const priceNum = Number(trip.price || 0);
             const availSeats = Number(trip.available_seats ?? 0);
             const totalSeats = Number(trip.seats ?? 0);
@@ -57,12 +58,31 @@ function Home() {
             const destination = trip.destination || 'ไม่ระบุปลายทาง';
             const driverId = trip.driver_id;
             const driverName = trip.driver_name || 'ผู้สร้างทริป';
+            const role = trip.user_role_in_trip; // 'driver' | 'passenger' | null
+            const isMember = role === 'driver' || role === 'passenger';
 
             return (
               <div key={trip.id} className="neu-card neu-card-hover" style={{ padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                    <h3 style={{ fontSize: 20, fontWeight: 700 }}>{destination}</h3>
+                    <div>
+                      <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{destination}</h3>
+                      {role && (
+                        <span
+                          className="neu-inset"
+                          style={{
+                            display: 'inline-block',
+                            padding: '3px 10px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            borderRadius: 10,
+                            color: role === 'driver' ? 'var(--accent)' : '#38B2AC',
+                          }}
+                        >
+                          {role === 'driver' ? '🏷️ ผู้สร้างทริป' : '✅ เข้าร่วมแล้ว'}
+                        </span>
+                      )}
+                    </div>
                     <span className="neu-inset" style={{ padding: '6px 12px', fontSize: 14, fontWeight: 700, color: 'var(--accent)' }}>
                       💰 {priceNum.toFixed(2)} ฿ / คน
                     </span>
@@ -77,12 +97,7 @@ function Home() {
                       {driverId ? (
                         <Link
                           to={`/profile/${driverId}`}
-                          style={{
-                            color: 'var(--accent)',
-                            fontWeight: 700,
-                            textDecoration: 'none',
-                            borderBottom: '1.5px dashed var(--accent)',
-                          }}
+                          style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none', borderBottom: '1.5px dashed var(--accent)' }}
                         >
                           {driverName}
                         </Link>
@@ -97,19 +112,29 @@ function Home() {
                   <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>
                     💺 ที่นั่งว่าง: {availSeats} / {totalSeats}
                   </span>
-                  <button
-                    onClick={() => handleJoinTrip(trip.id)}
-                    className="neu-btn-primary"
-                    style={{ padding: '8px 16px', fontSize: 14 }}
-                    disabled={availSeats <= 0}
-                  >
-                    {availSeats > 0 ? 'เข้าร่วมทริป' : 'เต็มแล้ว'}
-                  </button>
+                  {isMember ? (
+                    <button onClick={() => setDetailTrip(trip)} className="neu-btn" style={{ padding: '8px 16px', fontSize: 14 }}>
+                      💬 ดูรายละเอียด / แชท
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleJoinTrip(trip.id)}
+                      className="neu-btn-primary"
+                      style={{ padding: '8px 16px', fontSize: 14 }}
+                      disabled={availSeats <= 0}
+                    >
+                      {availSeats > 0 ? 'เข้าร่วมทริป' : 'เต็มแล้ว'}
+                    </button>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {detailTrip && (
+        <TripDetailModal tripId={detailTrip.id} currentUser={currentUser} onClose={() => setDetailTrip(null)} />
       )}
     </div>
   );

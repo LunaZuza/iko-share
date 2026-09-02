@@ -5,7 +5,7 @@ import api from '../services/api';
 function Login({ onLogin }) {
   const navigate = useNavigate();
   const [mode, setMode] = useState('login'); // 'login' | 'register'
-  const [form, setForm] = useState({ full_name: '', email: '', password: '', avatar_url: '' });
+  const [form, setForm] = useState({ full_name: '', email: '', password: '', avatar_url: '', phone: '', role: 'Both' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -83,10 +83,26 @@ function Login({ onLogin }) {
           </div>
 
           {mode === 'register' && (
-            <div>
-              <label style={{ display: 'block', fontWeight: 700, marginBottom: 8, fontSize: 14 }}>ลิงก์รูปโปรไฟล์ (ไม่บังคับ)</label>
-              <input className="neu-input" name="avatar_url" value={form.avatar_url} onChange={handleChange} placeholder="https://.../avatar.jpg" />
-            </div>
+            <>
+              <div>
+                <label style={{ display: 'block', fontWeight: 700, marginBottom: 8, fontSize: 14 }}>ลิงก์รูปโปรไฟล์ (ไม่บังคับ)</label>
+                <input className="neu-input" name="avatar_url" value={form.avatar_url} onChange={handleChange} placeholder="https://.../avatar.jpg" />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 700, marginBottom: 8, fontSize: 14 }}>เบอร์โทร (ไม่บังคับ)</label>
+                  <input className="neu-input" name="phone" value={form.phone} onChange={handleChange} placeholder="08xxxxxxxx" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 700, marginBottom: 8, fontSize: 14 }}>บทบาท</label>
+                  <select className="neu-input" name="role" value={form.role} onChange={handleChange}>
+                    <option value="Both">ทั้งขับและโดยสาร</option>
+                    <option value="Driver">ผู้ขับ (Driver)</option>
+                    <option value="Passenger">ผู้โดยสาร (Passenger)</option>
+                  </select>
+                </div>
+              </div>
+            </>
           )}
 
           <button type="submit" disabled={loading} className="neu-btn-primary" style={{ marginTop: 8, padding: 14, fontSize: 16 }}>

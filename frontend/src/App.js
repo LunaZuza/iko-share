@@ -48,7 +48,7 @@ function App() {
       {isAuthenticated && <Navbar user={user} onLogout={handleLogout} />}
       <Routes>
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />} />
-        <Route path="/" element={isAuthenticated ? <Home /> : <Navigate to="/login" replace />} />
+        <Route path="/" element={isAuthenticated ? <Home currentUser={user} /> : <Navigate to="/login" replace />} />
         <Route path="/create-trip" element={isAuthenticated ? <CreateTrip /> : <Navigate to="/login" replace />} />
         <Route path="/my-trips" element={isAuthenticated ? <MyTrips currentUser={user} /> : <Navigate to="/login" replace />} />
         <Route path="/profile/:id" element={isAuthenticated ? <Profile currentUser={user} /> : <Navigate to="/login" replace />} />
