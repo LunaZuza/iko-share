@@ -95,6 +95,8 @@ CREATE TABLE IF NOT EXISTS bookings (
 );
 CREATE INDEX IF NOT EXISTS idx_bookings_trip ON bookings(trip_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_user ON bookings(user_id);
+-- Composite index ใช้กับ query สมาชิกทริป + chat (กรอง trip_id + status confirmed)
+CREATE INDEX IF NOT EXISTS idx_bookings_trip_status ON bookings(trip_id, booking_status);
 
 -- ============================================================
 -- 6. TRIP MESSAGES (chat กลุ่มทริป)
