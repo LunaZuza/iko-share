@@ -6,8 +6,11 @@ const userController = require('../controllers/userController');
 // GET /api/users/profile/:id — ข้อมูลผู้ใช้พร้อมคะแนน
 router.get('/profile/:id', userController.getProfile);
 
-// PUT /api/users/profile — อัปเดต bio (ต้อง auth)
-router.put('/profile', verifyToken, userController.updateBio);
+// PUT /api/users/profile — อัปเดตโปรไฟล์ (ต้อง auth)
+router.put('/profile', verifyToken, userController.updateProfile);
+
+// DELETE /api/users/me — ลบบัญชีผู้ใช้ (ต้อง auth)
+router.delete('/me', verifyToken, userController.deleteAccount);
 
 // GET /api/users/:id — Route สำรองกัน 404
 router.get('/:id', userController.getUserById);

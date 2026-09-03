@@ -37,6 +37,10 @@ function App() {
     setUser(null);
   };
 
+  const handleUserUpdated = (updatedUser) => {
+    setUser(updatedUser);
+  };
+
   if (loading) {
     return <div style={{ textAlign: 'center', marginTop: 50 }}>กำลังโหลด...</div>;
   }
@@ -51,7 +55,7 @@ function App() {
         <Route path="/" element={isAuthenticated ? <Home currentUser={user} /> : <Navigate to="/login" replace />} />
         <Route path="/create-trip" element={isAuthenticated ? <CreateTrip /> : <Navigate to="/login" replace />} />
         <Route path="/my-trips" element={isAuthenticated ? <MyTrips currentUser={user} /> : <Navigate to="/login" replace />} />
-        <Route path="/profile/:id" element={isAuthenticated ? <Profile currentUser={user} /> : <Navigate to="/login" replace />} />
+        <Route path="/profile/:id" element={isAuthenticated ? <Profile currentUser={user} onUserUpdated={handleUserUpdated} onLogout={handleLogout} /> : <Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

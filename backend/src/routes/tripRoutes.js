@@ -24,6 +24,9 @@ router.post('/:id/join', verifyToken, tripController.joinTrip);
 // DELETE /api/trips/:id — ลบทริป เฉพาะเจ้าของ (ต้อง auth)
 router.delete('/:id', verifyToken, tripController.deleteTrip);
 
+// DELETE /api/trips/:id/leave — ออกจากทริป (เฉพาะผู้โดยสาร, ต้อง auth)
+router.delete('/:id/leave', verifyToken, tripController.leaveTrip);
+
 // GET /api/trips/:id/messages — ดึงข้อความแชท (เฉพาะสมาชิก, ต้อง auth)
 router.get('/:id/messages', verifyToken, tripController.getMessages);
 

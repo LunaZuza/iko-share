@@ -134,7 +134,7 @@ function Home({ currentUser }) {
       )}
 
       {detailTrip && (
-        <TripDetailModal tripId={detailTrip.id} currentUser={currentUser} onClose={() => setDetailTrip(null)} />
+        <TripDetailModal tripId={detailTrip.id} currentUser={currentUser} onClose={() => setDetailTrip(null)} onTripChanged={fetchTrips} />
       )}
     </div>
   );

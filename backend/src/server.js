@@ -31,29 +31,38 @@ app.use(
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
+  'https://iko-share.vercel.app',
   'https://carpool-frontend-two.vercel.app',
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
+// CORS — ครอบคลุม preflight OPTIONS สำหรับ https://iko-share.vercel.app
+// (Origin header ที่ browser ส่งมาจะเป็นแค่ host (ไม่มี ?fbclid=.../path) ดังนั้น
+// การ check ด้วย endsWith('.vercel.app') จึงครอบคลุมทุก deploy/preview domain)
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
         callback(null, true);
       } else {
-        callback(new Error('Blocked by CORS policy'));
+        const error = new Error('Blocked by CORS policy');
+        error.status = 403;
+        callback(error);
       }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   })
 );
 
-// Rate limit
+// Rate limit — ข้าม OPTIONS preflight เพื่อไม่ให้ถูกบล็อก
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
+  skip: (req) => req.method === 'OPTIONS',
   message: { error: 'Too many requests, please try again later.' },
 });
 app.use('/api', limiter);
@@ -85,8 +94,9 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
-  res.status(500).json({
-    error: 'เกิดข้อผิดพลาดในระบบ',
+  const status = err.status || 500;
+  res.status(status).json({
+    error: status >= 500 ? 'เกิดข้อผิดพลาดในระบบ' : err.message,
     message: process.env.NODE_ENV === 'development' ? err.message : undefined,
   });
 });

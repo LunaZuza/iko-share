@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { createSocket } from '../services/socket';
 
-function TripDetailModal({ tripId, currentUser, onClose }) {
+function TripDetailModal({ tripId, currentUser, onClose, onTripChanged }) {
   const [trip, setTrip] = useState(null);
   const [members, setMembers] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -99,6 +99,19 @@ function TripDetailModal({ tripId, currentUser, onClose }) {
 
   const driver = members?.driver;
   const passengers = members?.passengers || [];
+  const isPassenger = currentUser && passengers.some((p) => String(p.user_id) === String(currentUser.id));
+
+  const handleLeaveTrip = async () => {
+    if (!window.confirm('คุณต้องการออกจากทริปนี้ใช่หรือไม่?')) return;
+    try {
+      const res = await api.delete(`/trips/${tripId}/leave`);
+      alert(res.data.message || 'ออกจากทริปสำเร็จ');
+      onTripChanged?.();
+      onClose();
+    } catch (err) {
+      alert(err.response?.data?.error || 'ไม่สามารถออกจากทริปได้');
+    }
+  };
 
   return (
     <ModalShell onClose={onClose} width={720}>
@@ -144,6 +157,17 @@ function TripDetailModal({ tripId, currentUser, onClose }) {
           ))}
         </div>
       </div>
+
+      {/* ปุ่มออกจากทริป (เฉพาะผู้โดยสารที่ confirmed แล้ว) */}
+      {isPassenger && (
+        <button
+          onClick={handleLeaveTrip}
+          className="neu-btn-danger"
+          style={{ width: '100%', padding: '12px', fontSize: 15, marginBottom: 16 }}
+        >
+          🚪 ออกจากทริป (Leave Trip)
+        </button>
+      )}
 
       {/* แชทกลุ่มทริป */}
       <div className="neu-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>

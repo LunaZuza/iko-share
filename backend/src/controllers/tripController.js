@@ -183,18 +183,27 @@ exports.joinTrip = async (req, res) => {
     }
 
     const existing = await client.query(
-      'SELECT booking_id FROM bookings WHERE trip_id = $1 AND user_id = $2',
+      'SELECT booking_id, booking_status FROM bookings WHERE trip_id = $1 AND user_id = $2',
       [tripId, userId]
     );
     if (existing.rows.length > 0) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'คุณเข้าร่วมทริปนี้แล้ว' });
+      const booking = existing.rows[0];
+      // ถ้าเคยออก (cancelled) แล้ว ให้ reactivate ได้
+      if (booking.booking_status === 'cancelled') {
+        await client.query(
+          "UPDATE bookings SET booking_status = 'confirmed', booking_time = NOW(), location = COALESCE($1, location) WHERE booking_id = $2",
+          [location || null, booking.booking_id]
+        );
+      } else {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'คุณเข้าร่วมทริปนี้แล้ว' });
+      }
+    } else {
+      await client.query(
+        "INSERT INTO bookings (user_id, trip_id, booking_status, location) VALUES ($1, $2, 'confirmed', $3)",
+        [userId, tripId, location || null]
+      );
     }
-
-    await client.query(
-      "INSERT INTO bookings (user_id, trip_id, booking_status, location) VALUES ($1, $2, 'confirmed', $3)",
-      [userId, tripId, location || null]
-    );
 
     const updated = await client.query(
       'UPDATE trips SET available_seats = available_seats - 1 WHERE id = $1 RETURNING *',
@@ -233,6 +242,60 @@ exports.deleteTrip = async (req, res) => {
   } catch (error) {
     console.error('Delete trip error:', error);
     res.status(500).json({ error: 'ไม่สามารถลบทริปได้' });
+  }
+};
+
+// DELETE /api/trips/:id/leave — ออกจากทริป (เฉพาะผู้โดยสารที่ confirmed แล้ว)
+exports.leaveTrip = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const tripId = parseInt(req.params.id);
+    const userId = req.user.id;
+
+    await client.query('BEGIN');
+
+    const tripResult = await client.query('SELECT * FROM trips WHERE id = $1', [tripId]);
+    if (tripResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'ไม่พบทริป' });
+    }
+
+    if (String(tripResult.rows[0].driver_id) === String(userId)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'ผู้ขับไม่สามารถออกจากทริปของตัวเองได้' });
+    }
+
+    const bk = await client.query(
+      "SELECT booking_id FROM bookings WHERE trip_id = $1 AND user_id = $2 AND booking_status = 'confirmed'",
+      [tripId, userId]
+    );
+    if (bk.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'คุณไม่ได้เข้าร่วมทริปนี้' });
+    }
+
+    // เปลี่ยนสถานะเป็น cancelled (เก็บประวัติไว้) แล้วคืนที่นั่ง
+    await client.query(
+      "UPDATE bookings SET booking_status = 'cancelled' WHERE trip_id = $1 AND user_id = $2",
+      [tripId, userId]
+    );
+    const updated = await client.query(
+      'UPDATE trips SET available_seats = available_seats + 1 WHERE id = $1 RETURNING *',
+      [tripId]
+    );
+
+    await client.query('COMMIT');
+    res.json({
+      message: 'ออกจากทริปสำเร็จ',
+      trip: updated.rows[0],
+      available_seats: updated.rows[0].available_seats,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Leave trip error:', error);
+    res.status(500).json({ error: 'ไม่สามารถออกจากทริปได้' });
+  } finally {
+    client.release();
   }
 };
 

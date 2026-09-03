@@ -109,6 +109,7 @@ npm start            # เปิด http://localhost:3000
 | POST | `/api/trips` | สร้างทริปใหม่ (ต้อง auth) |
 | GET | `/api/trips/:id` | รายละเอียดทริป + สมาชิกทั้งหมด (driver + passengers ที่ confirmed) |
 | POST | `/api/trips/:id/join` | เข้าร่วมทริป (สร้าง booking + ลด `available_seats`) |
+| DELETE | `/api/trips/:id/leave` | ออกจากทริป (cancelled booking + คืนที่นั่ง) |
 | DELETE | `/api/trips/:id` | ลบทริป (เฉพาะเจ้าของ) |
 | GET | `/api/trips/my-trips` | ทริปที่ฉันสร้าง + ทริปที่ฉันเข้าร่วม (มี `user_role_in_trip`) |
 | GET | `/api/trips/joined` | ทริปที่ฉันเข้าร่วมเป็นผู้โดยสาร (compat) |
@@ -116,7 +117,8 @@ npm start            # เปิด http://localhost:3000
 | POST | `/api/trips/:id/messages` | ส่งแชท (เฉพาะสมาชิกทริป) |
 | GET | `/api/users/profile/:id` | ข้อมูลผู้ใช้ + `phone`, `role`, `avg_rating`, `total_reviews` |
 | GET | `/api/users/:id` | Route สำรองกัน 404 |
-| PUT | `/api/users/profile` | อัปเดต bio / phone / role (เฉพาะผู้ใช้ปัจจุบัน) |
+| PUT | `/api/users/profile` | อัปเดต `full_name` / `phone` / `role` / `avatar_url` / `bio` (เฉพาะผู้ใช้ปัจจุบัน) |
+| DELETE | `/api/users/me` | ลบบัญชีผู้ใช้ + ลบข้อมูลที่เกี่ยวข้อง (cascade) |
 
 ## 💬 Real-time Chat (Socket.IO)
 - Client เชื่อมต่อที่ host เดียวกับ API (ตัด `/api` ออก) พร้อมยืนยัน JWT ผ่าน `auth.token`
