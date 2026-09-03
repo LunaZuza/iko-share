@@ -42,7 +42,10 @@ exports.register = async (req, res) => {
     res.status(201).json({ token, ...userResponse(user) });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ error: 'ไม่สามารถสมัครสมาชิกได้' });
+    return res.status(500).json({
+      success: false,
+      message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+    });
   }
 };
 
@@ -71,7 +74,10 @@ exports.login = async (req, res) => {
     res.json({ token, ...userResponse(safeUser) });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'ไม่สามารถเข้าสู่ระบบได้' });
+    return res.status(500).json({
+      success: false,
+      message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+    });
   }
 };
 

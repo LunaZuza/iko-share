@@ -33,7 +33,9 @@ function Login({ onLogin }) {
       onLogin(res.data.user);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+      // แปลงเป็น string เสมอ — กัน React Error #31 (render object ลงใน JSX)
+      const raw = err.response?.data?.message || err.response?.data?.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+      setError(typeof raw === 'string' ? raw : 'เกิดข้อผิดพลาด กรุณาลองใหม่');
     } finally {
       setLoading(false);
     }

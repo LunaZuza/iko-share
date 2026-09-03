@@ -1,7 +1,9 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// ใช้ DATABASE_URL (Render / Railway / Supabase) ถ้ามี มิฉะนั้นใช้ตัวแปร DB_* ในเครื่อง
+// pool เป็น singleton ที่ export ออกไป — บน Vercel serverless มันจะถูก reuse ข้าม invocation
+// (warm lambda) แทนที่จะเปิด connection ใหม่ทุกครั้งที่เรียก API
+// ใช้ DATABASE_URL (Render / Railway / Supabase / Neon) ถ้ามี มิฉะนั้นใช้ตัวแปร DB_* ในเครื่อง
 const pool = new Pool(
   process.env.DATABASE_URL
     ? {
