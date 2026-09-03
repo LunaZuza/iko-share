@@ -6,7 +6,7 @@ const { userResponse } = require('../utils/user');
 const generateToken = (user) => {
   return jwt.sign(
     { id: user.id, email: user.email },
-    process.env.JWT_SECRET,
+    process.env.JWT_SECRET || 'iko_share_fallback_jwt_secret',
     { expiresIn: '7d' }
   );
 };
@@ -44,7 +44,8 @@ exports.register = async (req, res) => {
     console.error('Register error:', error);
     return res.status(500).json({
       success: false,
-      message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+      error: error.message || 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์',
+      message: error.message || 'Internal server error',
     });
   }
 };
@@ -76,7 +77,8 @@ exports.login = async (req, res) => {
     console.error('Login error:', error);
     return res.status(500).json({
       success: false,
-      message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+      error: error.message || 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์',
+      message: error.message || 'Internal server error',
     });
   }
 };
@@ -99,6 +101,10 @@ exports.getMe = async (req, res) => {
     res.json(userResponse(result.rows[0]));
   } catch (error) {
     console.error('Error in /auth/me:', error);
-    res.status(500).json({ success: false, message: 'Server error fetching user profile' });
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Server error fetching user profile',
+      message: error.message || 'Server error fetching user profile',
+    });
   }
 };

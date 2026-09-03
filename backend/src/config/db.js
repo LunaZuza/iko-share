@@ -1,14 +1,17 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// pool เป็น singleton ที่ export ออกไป — บน Vercel serverless มันจะถูก reuse ข้าม invocation
-// (warm lambda) แทนที่จะเปิด connection ใหม่ทุกครั้งที่เรียก API
-// ใช้ DATABASE_URL (Render / Railway / Supabase / Neon) ถ้ามี มิฉะนั้นใช้ตัวแปร DB_* ในเครื่อง
+// ตรวจสอบว่ามี DATABASE_URL (สำหรับ Vercel / Neon) หรือไม่
+const isProduction = Boolean(process.env.DATABASE_URL);
+
 const pool = new Pool(
-  process.env.DATABASE_URL
+  isProduction
     ? {
         connectionString: process.env.DATABASE_URL,
         ssl: { rejectUnauthorized: false },
+        max: 10, // จำกัดจำนวน connection สำหรับ Serverless
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
       }
     : {
         host: process.env.DB_HOST,
@@ -23,18 +26,9 @@ const pool = new Pool(
       }
 );
 
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('❌ Database connection failed:', err.stack);
-  } else {
-    console.log('✅ Database connected successfully');
-    release();
-  }
-});
-
-// กัน process crash เมื่อ idle connection หลุดระหว่างที่เซิร์ฟเวอร์ sleep
+// ป้องกัน Process Crash เมื่อ Connection ที่พูลไว้นานดรอปในระบบ Serverless
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle DB client:', err.message);
+  console.error('❌ Unexpected error on idle DB client:', err.message);
 });
 
 module.exports = pool;
