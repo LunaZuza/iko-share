@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { asArray, extractArray } from '../utils/array';
 
 function CreateTrip() {
   const navigate = useNavigate();
@@ -19,6 +20,9 @@ function CreateTrip() {
   const [loadingCars, setLoadingCars] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // กัน .map is not a function
+  const safeMyCars = asArray(myCars);
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -30,8 +34,9 @@ function CreateTrip() {
     setLoadingCars(true);
     try {
       const res = await api.get('/cars/my-cars');
-      setMyCars(res.data);
-      if (res.data.length > 0) setSelectedCarId(String(res.data[0].id));
+      const cars = extractArray(res.data);
+      setMyCars(cars);
+      if (cars.length > 0) setSelectedCarId(String(cars[0].id));
     } catch (err) {
       console.error(err);
     } finally {
@@ -41,7 +46,7 @@ function CreateTrip() {
 
   const toggleHasCar = async (checked) => {
     setHasCar(checked);
-    if (checked && myCars.length === 0) await fetchMyCars();
+    if (checked && safeMyCars.length === 0) await fetchMyCars();
   };
 
   const handleSubmit = async (e) => {
@@ -135,11 +140,11 @@ function CreateTrip() {
                   <div>
                     {loadingCars ? (
                       <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>กำลังโหลดรถ...</p>
-                    ) : myCars.length === 0 ? (
+                    ) : safeMyCars.length === 0 ? (
                       <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>ยังไม่มีรถ — สลับไปที่ "เพิ่มรถยนต์ใหม่"</p>
                     ) : (
                       <select className="neu-input" value={selectedCarId} onChange={(e) => setSelectedCarId(e.target.value)}>
-                        {myCars.map((c) => (
+                        {safeMyCars.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.model} · {c.color || '-'} · {c.license_plate} ({c.capacity} ที่นั่ง)
                           </option>

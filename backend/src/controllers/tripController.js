@@ -68,7 +68,8 @@ exports.getTrips = async (req, res) => {
       }));
     }
 
-    res.json(trips);
+    // คืน array เสมอ (กัน frontend โดน .map is not a function)
+    res.json(trips || []);
   } catch (error) {
     console.error('Get trips error:', error);
     res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลทริปได้' });

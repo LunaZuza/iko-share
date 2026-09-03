@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { createSocket } from '../services/socket';
 import { formatDepartureTime } from '../utils/date';
+import { asArray, extractArray } from '../utils/array';
 
 function TripDetailModal({ tripId, currentUser, onClose, onTripChanged }) {
   const [trip, setTrip] = useState(null);
@@ -25,7 +26,7 @@ function TripDetailModal({ tripId, currentUser, onClose, onTripChanged }) {
         if (!mounted) return;
         setTrip(tripRes.data.trip);
         setMembers(tripRes.data.members);
-        setMessages(msgRes.data);
+        setMessages(extractArray(msgRes.data));
       } catch (err) {
         if (mounted) console.error('Failed to load trip detail:', err);
       } finally {
@@ -99,7 +100,8 @@ function TripDetailModal({ tripId, currentUser, onClose, onTripChanged }) {
   }
 
   const driver = members?.driver;
-  const passengers = members?.passengers || [];
+  const passengers = asArray(members?.passengers);
+  const safeMessages = asArray(messages);
   const isPassenger = currentUser && passengers.some((p) => String(p.user_id) === String(currentUser.id));
   // ซ่อนปุ่มออกจากทริปถ้าเป็นผู้ขับเอง (driver)
   const isDriver = trip && currentUser && String(trip.driver_id) === String(currentUser.id);
@@ -176,10 +178,10 @@ function TripDetailModal({ tripId, currentUser, onClose, onTripChanged }) {
       <div className="neu-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h4 style={{ fontSize: 15, fontWeight: 800 }}>💬 แชทกลุ่มทริป</h4>
         <div className="neu-inset-deep" style={{ height: 220, padding: 14, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, borderRadius: 16 }}>
-          {messages.length === 0 && (
+          {safeMessages.length === 0 && (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: 20 }}>ยังไม่มีข้อความ</div>
           )}
-          {messages.map((m) => {
+          {safeMessages.map((m) => {
             const isMe = currentUser && String(m.user_id) === String(currentUser.id);
             return (
               <div key={m.id} className={isMe ? 'chat-bubble-me' : 'chat-bubble-other'}>

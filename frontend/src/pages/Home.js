@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import TripDetailModal from '../components/TripDetailModal';
+import { asArray, extractArray } from '../utils/array';
 
 function Home({ currentUser }) {
   const [trips, setTrips] = useState([]);
@@ -15,7 +16,8 @@ function Home({ currentUser }) {
   const fetchTrips = async () => {
     try {
       const res = await api.get('/trips');
-      setTrips(res.data);
+      // สกัด array อย่างปลอดภัย (รองรับ res.data เป็น array ตรง ๆ หรือ { trips: [...] })
+      setTrips(extractArray(res.data));
     } catch (err) {
       console.error(err);
     } finally {
@@ -37,6 +39,9 @@ function Home({ currentUser }) {
     return <div style={{ textAlign: 'center', marginTop: 80, color: 'var(--text-muted)' }}>กำลังโหลดทริป...</div>;
   }
 
+  // กัน .map is not a function — บังคับเป็น array เสมอ
+  const safeTrips = asArray(trips);
+
   return (
     <div style={{ maxWidth: 1000, margin: '40px auto', padding: '0 20px' }}>
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
@@ -44,13 +49,13 @@ function Home({ currentUser }) {
         <p style={{ color: 'var(--text-muted)' }}>ค้นหาและร่วมเดินทางไปยังสถานที่ต่างๆ ด้วยกัน</p>
       </div>
 
-      {trips.length === 0 ? (
+      {safeTrips.length === 0 ? (
         <div className="neu-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
           ยังไม่มีทริป — กด "+ สร้างทริป" เพื่อเริ่มแชร์ค่ากันเถอะ!
         </div>
       ) : (
         <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
-          {trips.map((trip) => {
+          {safeTrips.map((trip) => {
             const priceNum = Number(trip.price || 0);
             const availSeats = Number(trip.available_seats ?? 0);
             const totalSeats = Number(trip.seats ?? 0);

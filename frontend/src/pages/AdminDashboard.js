@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { asArray, extractArray } from '../utils/array';
 
 function AdminDashboard() {
   const [tab, setTab] = useState('overview'); // 'overview' | 'users' | 'trips'
@@ -16,19 +17,22 @@ function AdminDashboard() {
 
   const loadStats = async () => {
     setLoading(true);
-    try { const res = await api.get('/admin/stats'); setStats(res.data); }
-    catch (err) { console.error(err); }
+    try {
+      const res = await api.get('/admin/stats');
+      // stats ควรเป็น object — กันกรณี response ไม่ใช่ object ที่คาดไว้
+      setStats(res.data && typeof res.data === 'object' ? res.data : null);
+    } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
   const loadUsers = async () => {
     setLoading(true);
-    try { const res = await api.get('/admin/users'); setUsers(res.data); }
+    try { const res = await api.get('/admin/users'); setUsers(extractArray(res.data)); }
     catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
   const loadTrips = async () => {
     setLoading(true);
-    try { const res = await api.get('/trips'); setTrips(res.data); }
+    try { const res = await api.get('/trips'); setTrips(extractArray(res.data)); }
     catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -62,6 +66,10 @@ function AdminDashboard() {
     background: active ? 'var(--accent)' : 'var(--bg-surface)',
     boxShadow: active ? 'none' : '6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light)',
   });
+
+  // กัน .map is not a function — บังคับเป็น array เสมอ
+  const safeUsers = asArray(users);
+  const safeTrips = asArray(trips);
 
   return (
     <div style={{ maxWidth: 1000, margin: '40px auto', padding: '0 20px' }}>
@@ -104,10 +112,10 @@ function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {users.length === 0 && (
+              {safeUsers.length === 0 && (
                 <tr><td colSpan="7" style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>ไม่มีผู้ใช้</td></tr>
               )}
-              {users.map((u) => (
+              {safeUsers.map((u) => (
                 <tr key={u.id}>
                   <td style={{ padding: '10px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span className="neu-card" style={{ width: 30, height: 30, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
@@ -159,10 +167,10 @@ function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {trips.length === 0 && (
+              {safeTrips.length === 0 && (
                 <tr><td colSpan="7" style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>ไม่มีทริป</td></tr>
               )}
-              {trips.map((t) => (
+              {safeTrips.map((t) => (
                 <tr key={t.id}>
                   <td style={{ padding: '10px 8px', fontWeight: 700 }}>{t.destination}</td>
                   <td style={{ padding: '10px 8px' }}>{t.origin} → {t.destination}</td>

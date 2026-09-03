@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import TripDetailModal from '../components/TripDetailModal';
+import { asArray, extractArray } from '../utils/array';
 
 function MyTrips({ currentUser }) {
   const [trips, setTrips] = useState([]);
@@ -15,7 +16,7 @@ function MyTrips({ currentUser }) {
   const fetchTrips = async () => {
     try {
       const res = await api.get('/trips/my-trips');
-      setTrips(res.data);
+      setTrips(extractArray(res.data));
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -34,9 +35,10 @@ function MyTrips({ currentUser }) {
     }
   };
 
-  const driverTrips = trips.filter((t) => t.user_role_in_trip === 'driver');
-  const passengerTrips = trips.filter((t) => t.user_role_in_trip === 'passenger');
-  const visibleTrips = tab === 'driver' ? driverTrips : passengerTrips;
+  const safeTrips = asArray(trips);
+  const driverTrips = safeTrips.filter((t) => t.user_role_in_trip === 'driver');
+  const passengerTrips = safeTrips.filter((t) => t.user_role_in_trip === 'passenger');
+  const visibleTrips = asArray(tab === 'driver' ? driverTrips : passengerTrips);
 
   if (loading) return <div style={{ textAlign: 'center', marginTop: 100, color: 'var(--text-muted)' }}>กำลังโหลด...</div>;
 
