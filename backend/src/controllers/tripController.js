@@ -1,10 +1,13 @@
 const pool = require('../config/db');
 
 // คอลัมน์ที่ใช้ร่วมกันสำหรับ query ทริป (alias ให้ Frontend ใช้ `price`, `trip_id`)
+// departure_time: ตีความค่า wall-clock ที่เก็บไว้เป็นเวลากรุงเทพ (UTC+7) แล้วแปลงเป็น UTC
+// เพื่อให้ Frontend แสดงกลับเป็นเวลากรุงเทพได้ถูกต้อง (แก้บัค +7 ชั่วโมง)
 const TRIP_COLS = `
   t.id, t.id AS trip_id, t.driver_id, t.license_plate, t.event_id,
   t.origin, t.destination, t.available_seats, t.seats,
-  t.price_seat, t.price_seat AS price, t.departure_time, t.created_at,
+  t.price_seat, t.price_seat AS price,
+  (t.departure_time AT TIME ZONE 'Asia/Bangkok') AS departure_time, t.created_at,
   u.full_name AS driver_name, u.avatar_url AS driver_avatar,
   u.phone AS driver_phone, u.role AS driver_role
 `;
@@ -76,8 +79,10 @@ exports.getTripById = async (req, res) => {
     const passengerResult = await pool.query(
       `SELECT b.booking_id, b.user_id, u.full_name AS name, u.phone, u.role,
               b.booking_status AS status, b.location, b.booking_time
-       FROM bookings b JOIN users u ON b.user_id = u.id
-       WHERE b.trip_id = $1 AND b.booking_status = 'confirmed'
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       JOIN trips t ON b.trip_id = t.id
+       WHERE b.trip_id = $1 AND b.booking_status = 'confirmed' AND b.user_id != t.driver_id
        ORDER BY b.booking_time ASC`,
       [req.params.id]
     );

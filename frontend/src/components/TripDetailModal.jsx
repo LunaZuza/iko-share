@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { createSocket } from '../services/socket';
+import { formatDepartureTime } from '../utils/date';
 
 function TripDetailModal({ tripId, currentUser, onClose, onTripChanged }) {
   const [trip, setTrip] = useState(null);
@@ -100,6 +101,8 @@ function TripDetailModal({ tripId, currentUser, onClose, onTripChanged }) {
   const driver = members?.driver;
   const passengers = members?.passengers || [];
   const isPassenger = currentUser && passengers.some((p) => String(p.user_id) === String(currentUser.id));
+  // ซ่อนปุ่มออกจากทริปถ้าเป็นผู้ขับเอง (driver)
+  const isDriver = trip && currentUser && String(trip.driver_id) === String(currentUser.id);
 
   const handleLeaveTrip = async () => {
     if (!window.confirm('คุณต้องการออกจากทริปนี้ใช่หรือไม่?')) return;
@@ -123,9 +126,9 @@ function TripDetailModal({ tripId, currentUser, onClose, onTripChanged }) {
       <div className="neu-inset-deep" style={{ padding: 16, borderRadius: 20, marginBottom: 16 }}>
         <p style={{ fontSize: 14, marginBottom: 6 }}>📍 {trip?.origin} → {trip?.destination}</p>
         <p style={{ fontSize: 14, color: 'var(--accent)', fontWeight: 700 }}>💰 {Number(trip?.price_seat ?? 0).toFixed(2)} ฿ / คน · 💺 เหลือ {trip?.available_seats} / {trip?.seats}</p>
-        {typeof trip?.departure_time === 'string' && (
+        {trip?.departure_time && (
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-            ⏰ {new Date(trip.departure_time).toLocaleString('th-TH')}
+            ⏰ {formatDepartureTime(trip.departure_time)}
           </p>
         )}
       </div>
@@ -158,8 +161,8 @@ function TripDetailModal({ tripId, currentUser, onClose, onTripChanged }) {
         </div>
       </div>
 
-      {/* ปุ่มออกจากทริป (เฉพาะผู้โดยสารที่ confirmed แล้ว) */}
-      {isPassenger && (
+      {/* ปุ่มออกจากทริป (เฉพาะผู้โดยสารที่ confirmed แล้ว ไม่ใช่ผู้ขับ) */}
+      {isPassenger && !isDriver && (
         <button
           onClick={handleLeaveTrip}
           className="neu-btn-danger"
