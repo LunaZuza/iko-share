@@ -1,0 +1,8 @@
+{
+  "name": "iko-share",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "start": "node backend/src/server.js"
+  }
+}
