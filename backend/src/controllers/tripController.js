@@ -4,15 +4,16 @@ const pool = require('../config/db');
 // departure_time: ตีความค่า wall-clock ที่เก็บไว้เป็นเวลากรุงเทพ (UTC+7) แล้วแปลงเป็น UTC
 // เพื่อให้ Frontend แสดงกลับเป็นเวลากรุงเทพได้ถูกต้อง (แก้บัค +7 ชั่วโมง)
 const TRIP_COLS = `
-  t.id, t.id AS trip_id, t.driver_id, t.license_plate, t.event_id,
+  t.id, t.id AS trip_id, t.driver_id, t.car_id, t.license_plate, t.event_id,
   t.origin, t.destination, t.available_seats, t.seats,
   t.price_seat, t.price_seat AS price,
   (t.departure_time AT TIME ZONE 'Asia/Bangkok') AS departure_time, t.created_at,
+  c.model AS car_model, c.color AS car_color,
   u.full_name AS driver_name, u.avatar_url AS driver_avatar,
   u.phone AS driver_phone, u.role AS driver_role
 `;
 
-const TRIP_SELECT = `SELECT ${TRIP_COLS} FROM trips t JOIN users u ON t.driver_id = u.id`;
+const TRIP_SELECT = `SELECT ${TRIP_COLS} FROM trips t JOIN users u ON t.driver_id = u.id LEFT JOIN cars c ON t.car_id = c.id`;
 
 // ตรวจว่าผู้ใช้เป็นสมาชิกของทริป (driver หรือ passenger ที่ confirmed แล้ว)
 const isTripMember = async (tripId, userId) => {
@@ -108,7 +109,7 @@ exports.getTripById = async (req, res) => {
 // POST /api/trips — สร้างทริปใหม่ (ต้อง auth)
 exports.createTrip = async (req, res) => {
   try {
-    const { origin, destination, price, seats, departure_time, license_plate, event_id } = req.body;
+    const { origin, destination, price, seats, departure_time, license_plate, car_id, event_id } = req.body;
 
     if (!origin || !destination) {
       return res.status(400).json({ error: 'กรุณากรอกจุดเริ่มต้นและปลายทางให้ครบถ้วน' });
@@ -119,17 +120,30 @@ exports.createTrip = async (req, res) => {
       return res.status(400).json({ error: 'จำนวนที่นั่งต้องอยู่ระหว่าง 1-20' });
     }
 
-    // ผูก license_plate เฉพาะถ้ามีรถจริงในตาราง cars (กัน FK error ถ้ายังไม่ได้ลงทะเบียนรถ)
+    // ลิงก์รถผ่าน car_id (ถ้าให้มา) — ต้องเป็นรถของผู้ใช้เองเท่านั้น แล้วดึง license_plate มาด้วย
     let plate = license_plate || null;
-    if (plate) {
-      const carCheck = await pool.query('SELECT license_plate FROM cars WHERE license_plate = $1', [plate]);
-      if (carCheck.rows.length === 0) plate = null;
+    let carId = car_id || null;
+    if (carId) {
+      const carCheck = await pool.query('SELECT id, license_plate FROM cars WHERE id = $1 AND user_id = $2', [carId, req.user.id]);
+      if (carCheck.rows.length === 0) {
+        return res.status(400).json({ error: 'ไม่พบรถยนต์หรือรถไม่ใช่ของผู้ใช้ท่านนี้' });
+      }
+      plate = carCheck.rows[0].license_plate;
+    } else if (plate) {
+      // backward compatible: ผูก license_plate เฉพาะถ้ามีรถจริงในตาราง cars
+      const carCheck = await pool.query('SELECT id FROM cars WHERE license_plate = $1 AND user_id = $2', [plate, req.user.id]);
+      if (carCheck.rows.length === 0) {
+        // ไม่ใช่รถของผู้ใช้ ให้คงเป็น null (กัน FK error)
+        plate = null;
+      } else {
+        carId = carCheck.rows[0].id;
+      }
     }
 
     const result = await pool.query(
       `INSERT INTO trips
-         (driver_id, origin, destination, price_seat, seats, available_seats, departure_time, license_plate, event_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+         (driver_id, origin, destination, price_seat, seats, available_seats, departure_time, license_plate, car_id, event_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
       [
         req.user.id,
         origin,
@@ -139,6 +153,7 @@ exports.createTrip = async (req, res) => {
         seatCount,
         departure_time || null,
         plate,
+        carId,
         event_id || null,
       ]
     );
@@ -316,6 +331,7 @@ exports.getMyTrips = async (req, res) => {
        FROM bookings b
        JOIN trips t ON b.trip_id = t.id
        JOIN users u ON t.driver_id = u.id
+       LEFT JOIN cars c ON t.car_id = c.id
        WHERE b.user_id = $1 AND b.booking_status IN ('confirmed', 'pending')
        ORDER BY t.created_at DESC`,
       [req.user.id]
@@ -339,6 +355,7 @@ exports.getJoinedTrips = async (req, res) => {
        FROM bookings b
        JOIN trips t ON b.trip_id = t.id
        JOIN users u ON t.driver_id = u.id
+       LEFT JOIN cars c ON t.car_id = c.id
        WHERE b.user_id = $1 AND b.booking_status = 'confirmed'
        ORDER BY t.created_at DESC`,
       [req.user.id]

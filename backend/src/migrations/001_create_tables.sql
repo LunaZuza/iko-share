@@ -24,12 +24,14 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,         -- สำหรับ JWT auth (extend นอก ER)
   phone VARCHAR(15),
   role VARCHAR(20) NOT NULL DEFAULT 'Both',    -- 'Driver' | 'Passenger' | 'Both'
+  is_admin BOOLEAN NOT NULL DEFAULT FALSE,     -- ผู้ดูแลระบบ
   avatar_url TEXT,
   bio TEXT DEFAULT '',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(15);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'Both';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 DO $$ BEGIN
   ALTER TABLE users ADD CONSTRAINT users_role_check
@@ -40,13 +42,16 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- 2. CAR
 -- ============================================================
 CREATE TABLE IF NOT EXISTS cars (
-  license_plate VARCHAR(100) PRIMARY KEY,
+  id SERIAL PRIMARY KEY,                        -- car_id
+  license_plate VARCHAR(100) UNIQUE NOT NULL,
   user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   model VARCHAR(50),
+  color VARCHAR(50),
   capacity INT NOT NULL DEFAULT 4,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_cars_user ON cars(user_id);
+CREATE INDEX IF NOT EXISTS idx_cars_plate ON cars(license_plate);
 
 -- ============================================================
 -- 3. EVENT
@@ -66,6 +71,7 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE TABLE IF NOT EXISTS trips (
   id SERIAL PRIMARY KEY,                         -- trip_id
   driver_id INT REFERENCES users(id) ON DELETE CASCADE,
+  car_id INT REFERENCES cars(id) ON DELETE SET NULL,   -- เชื่อมกับรถที่เลือก
   license_plate VARCHAR(100) REFERENCES cars(license_plate) ON DELETE SET NULL,
   event_id INT REFERENCES events(event_id) ON DELETE SET NULL,
   origin VARCHAR(255) NOT NULL,
@@ -77,9 +83,9 @@ CREATE TABLE IF NOT EXISTS trips (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_trips_driver ON trips(driver_id);
+CREATE INDEX IF NOT EXISTS idx_trips_car ON trips(car_id);
 CREATE INDEX IF NOT EXISTS idx_trips_plate ON trips(license_plate);
 CREATE INDEX IF NOT EXISTS idx_trips_event ON trips(event_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_trips_license_plate ON trips(license_plate);
 
 -- ============================================================
 -- 5. BOOKING

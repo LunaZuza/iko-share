@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const pool = require('../config/db');
 
 // verifyToken: ยืนยันตัวตนผ่าน JWT แล้วใส่ข้อมูลผู้ใช้ลงใน req.user
 const verifyToken = (req, res, next) => {
@@ -50,4 +51,21 @@ const optionalAuth = (req, res, next) => {
   next();
 };
 
-module.exports = { verifyToken, optionalAuth };
+// isAdmin: ตรวจว่า req.user เป็นแอดมิน (query DB เพื่อความถูกต้องเสมอ)
+const isAdmin = async (req, res, next) => {
+  try {
+    const { rows } = await pool.query('SELECT is_admin FROM users WHERE id = $1', [req.user.id]);
+    if (rows.length === 0) {
+      return res.status(401).json({ error: 'ไม่พบผู้ใช้' });
+    }
+    req.user.is_admin = rows[0].is_admin;
+    if (req.user.is_admin !== true) {
+      return res.status(403).json({ error: 'คุณไม่มีสิทธิ์ผู้ดูแลระบบ (Admin)' });
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { verifyToken, optionalAuth, isAdmin };

@@ -87,6 +87,23 @@ function Navbar({ user, onLogout }) {
             >
               + สร้างทริป
             </Link>
+            {user?.is_admin && (
+              <Link
+                to="/admin"
+                className={isActive('/admin') ? 'neu-inset' : ''}
+                style={{
+                  color: isActive('/admin') ? 'var(--accent)' : 'var(--accent)',
+                  textDecoration: 'none',
+                  fontWeight: 800,
+                  padding: '8px 16px',
+                  borderRadius: 14,
+                  transition: 'all 0.2s ease',
+                  backgroundColor: 'rgba(108,99,255,0.08)',
+                }}
+              >
+                👑 ระบบจัดการแอดมิน
+              </Link>
+            )}
           </div>
         </div>
 

@@ -9,6 +9,8 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/authRoutes');
 const tripRoutes = require('./routes/tripRoutes');
 const userRoutes = require('./routes/userRoutes');
+const carRoutes = require('./routes/carRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const initSocket = require('./socket');
 
 const app = express();
@@ -74,6 +76,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/cars', carRoutes);
+app.use('/api/admin', adminRoutes);
 
 // WebSocket (Socket.IO) สำหรับแชทกลุ่มทริป
 initSocket(server);

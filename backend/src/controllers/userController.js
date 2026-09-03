@@ -3,7 +3,7 @@ const pool = require('../config/db');
 // ประกอบข้อมูลโปรไฟล์ + คะแนนรีวิว
 const buildProfile = async (id) => {
   const userResult = await pool.query(
-    'SELECT id, full_name, email, avatar_url, bio, phone, role, created_at FROM users WHERE id = $1',
+    'SELECT id, full_name, email, avatar_url, bio, phone, role, is_admin, created_at FROM users WHERE id = $1',
     [id]
   );
   if (userResult.rows.length === 0) return null;
@@ -75,7 +75,7 @@ exports.updateProfile = async (req, res) => {
     );
 
     const userResult = await pool.query(
-      'SELECT id, full_name, email, avatar_url, bio, phone, role, created_at FROM users WHERE id = $1',
+      'SELECT id, full_name, email, avatar_url, bio, phone, role, is_admin, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     res.json({ message: 'อัปเดตโปรไฟล์สำเร็จ', user: userResult.rows[0] });

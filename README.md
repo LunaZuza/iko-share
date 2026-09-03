@@ -93,10 +93,10 @@ npm start            # เปิด http://localhost:3000
 - ตรวจว่า `/api/health` ของ backend ใช้งานได้
 
 ## 🗄️ Database Schema (v2 — ตรง ER Diagram)
-- **USER** — `user_id`, `name`, `email`, `phone`, `role` (Driver/Passenger/Both) + auth fields
-- **CAR** — `license_plate` (PK), `user_id`, `model`, `capacity`
+- **USER** — `user_id`, `name`, `email`, `phone`, `role` (Driver/Passenger/Both), `is_admin` + auth fields
+- **CAR** — `car_id`, `license_plate` (UNIQUE), `user_id`, `model`, `color`, `capacity`
 - **EVENT** — `event_id`, `event_name`, `location`, `event_date`, `category`
-- **TRIP** — `trip_id`, `license_plate` (FK→CAR), `event_id` (FK→EVENT), `origin`, `destination`, `available_seats`, `price_seat`
+- **TRIP** — `trip_id`, `driver_id`, `car_id` (FK→CAR), `event_id` (FK→EVENT), `origin`, `destination`, `available_seats`, `price_seat`
 - **BOOKING** — `booking_id`, `user_id`, `trip_id`, `booking_status` (pending/confirmed/cancelled), `location`, `booking_time`
 - ยังคงมี **`trip_messages`** (chat) และ **`user_ratings`** (รีวิว) สำหรับฟีเจอร์เดิม
 
@@ -119,6 +119,13 @@ npm start            # เปิด http://localhost:3000
 | GET | `/api/users/:id` | Route สำรองกัน 404 |
 | PUT | `/api/users/profile` | อัปเดต `full_name` / `phone` / `role` / `avatar_url` / `bio` (เฉพาะผู้ใช้ปัจจุบัน) |
 | DELETE | `/api/users/me` | ลบบัญชีผู้ใช้ + ลบข้อมูลที่เกี่ยวข้อง (cascade) |
+| GET | `/api/cars/my-cars` | รถยนต์ของผู้ใช้ปัจจุบัน (ต้อง auth) |
+| POST | `/api/cars` | เพิ่มรถยนต์ใหม่ (ต้อง auth) |
+| GET | `/api/admin/stats` | สถิติภาพรวม (ต้อง admin) |
+| GET | `/api/admin/users` | รายชื่อผู้ใช้ทั้งหมด + trip_count (ต้อง admin) |
+| PATCH | `/api/admin/users/:id/role` | มอบ/ถอนแอดมิน หรือเปลี่ยนบทบาท (ต้อง admin) |
+| DELETE | `/api/admin/users/:id` | ลบผู้ใช้ใด ๆ (ต้อง admin) |
+| DELETE | `/api/admin/trips/:id` | ลบ/ยกเลิกทริปใด ๆ (ต้อง admin) |
 
 ## 💬 Real-time Chat (Socket.IO)
 - Client เชื่อมต่อที่ host เดียวกับ API (ตัด `/api` ออก) พร้อมยืนยัน JWT ผ่าน `auth.token`

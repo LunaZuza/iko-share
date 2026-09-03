@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import CreateTrip from './pages/CreateTrip';
 import MyTrips from './pages/MyTrips';
 import Profile from './pages/Profile';
+import AdminDashboard from './pages/AdminDashboard';
 import api from './services/api';
 
 function App() {
@@ -56,6 +57,7 @@ function App() {
         <Route path="/create-trip" element={isAuthenticated ? <CreateTrip /> : <Navigate to="/login" replace />} />
         <Route path="/my-trips" element={isAuthenticated ? <MyTrips currentUser={user} /> : <Navigate to="/login" replace />} />
         <Route path="/profile/:id" element={isAuthenticated ? <Profile currentUser={user} onUserUpdated={handleUserUpdated} onLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+        <Route path="/admin" element={isAuthenticated && user?.is_admin ? <AdminDashboard /> : <Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

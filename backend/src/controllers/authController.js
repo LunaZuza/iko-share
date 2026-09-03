@@ -32,7 +32,7 @@ exports.register = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO users (full_name, email, password_hash, avatar_url, bio, phone, role)
        VALUES ($1, $2, $3, $4, '', $5, $6)
-       RETURNING id, full_name, email, avatar_url, bio, phone, role, created_at`,
+       RETURNING id, full_name, email, avatar_url, bio, phone, role, is_admin, created_at`,
       [full_name, email, password_hash, avatar_url || null, phone || null, safeRole]
     );
 
@@ -78,7 +78,7 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, full_name, email, avatar_url, bio, phone, role, created_at FROM users WHERE id = $1',
+      'SELECT id, full_name, email, avatar_url, bio, phone, role, is_admin, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     if (result.rows.length === 0) {
