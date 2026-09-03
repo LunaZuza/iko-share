@@ -29,36 +29,18 @@ app.use(
   })
 );
 
-// กำหนด Origin ที่อนุญาตให้ทำ CORS
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'https://iko-share.vercel.app',
-  'https://carpool-frontend-two.vercel.app',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
-// CORS — ครอบคลุม preflight OPTIONS สำหรับ https://iko-share.vercel.app
-// (Origin header ที่ browser ส่งมาจะเป็นแค่ host (ไม่มี ?fbclid=.../path) ดังนั้น
-// การ check ด้วย endsWith('.vercel.app') จึงครอบคลุมทุก deploy/preview domain)
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-        callback(null, true);
-      } else {
-        const error = new Error('Blocked by CORS policy');
-        error.status = 403;
-        callback(error);
-      }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-  })
-);
+// CORS — เปิด preflight OPTIONS ครบทุก method ทั้ง local และ production (single-domain Vercel)
+const corsOptions = {
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+};
+app.use(cors(corsOptions));
+// จัดการ OPTIONS preflight สำหรับทุก path แบบ global (กัน 405 Method Not Allowed)
+app.options('*', cors(corsOptions));
 
 // Rate limit — ข้าม OPTIONS preflight เพื่อไม่ให้ถูกบล็อก
 const limiter = rateLimit({
@@ -72,24 +54,29 @@ app.use('/api', limiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
+// Routes — mount ที่ /api/* เป็นหลัก
 app.use('/api/auth', authRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/cars', carRoutes);
 app.use('/api/admin', adminRoutes);
 
+// รองรับทั้งกรณี Vercel ตัด (/auth/...) หรือคง (/api/auth/...) prefix ไว้
+app.use('/auth', authRoutes);
+app.use('/trips', tripRoutes);
+app.use('/users', userRoutes);
+app.use('/cars', carRoutes);
+app.use('/admin', adminRoutes);
+
 // WebSocket (Socket.IO) สำหรับแชทกลุ่มทริป
 initSocket(server);
 
-// Health Check
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  });
-});
+// Health Check (ทั้ง /api/health และ /health)
+const healthHandler = (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString(), uptime: process.uptime() });
+};
+app.get('/api/health', healthHandler);
+app.get('/health', healthHandler);
 
 // 404 Handler และ Error Handler
 app.use((req, res) => {
