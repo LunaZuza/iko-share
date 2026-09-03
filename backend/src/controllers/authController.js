@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
+const { userResponse } = require('../utils/user');
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -38,7 +39,7 @@ exports.register = async (req, res) => {
 
     const user = result.rows[0];
     const token = generateToken({ id: user.id, email: user.email });
-    res.status(201).json({ token, user });
+    res.status(201).json({ token, ...userResponse(user) });
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ error: 'ไม่สามารถสมัครสมาชิกได้' });
@@ -67,7 +68,7 @@ exports.login = async (req, res) => {
 
     const token = generateToken({ id: user.id, email: user.email });
     const { password_hash, ...safeUser } = user;
-    res.json({ token, user: safeUser });
+    res.json({ token, ...userResponse(safeUser) });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'ไม่สามารถเข้าสู่ระบบได้' });
@@ -84,7 +85,7 @@ exports.getMe = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
     }
-    res.json(result.rows[0]);
+    res.json(userResponse(result.rows[0]));
   } catch (error) {
     console.error('Get me error:', error);
     res.status(500).json({ error: 'Server error' });

@@ -63,6 +63,8 @@ function Home({ currentUser }) {
             const destination = trip.destination || 'ไม่ระบุปลายทาง';
             const driverId = trip.driver_id;
             const driverName = trip.driver_name || 'ผู้สร้างทริป';
+            // กันลิงก์ /profile/undefined เมื่อไม่มี driver_id
+            const driverPath = driverId && driverId !== 'undefined' ? `/profile/${driverId}` : null;
             const role = trip.user_role_in_trip; // 'driver' | 'passenger' | null
             const isMember = role === 'driver' || role === 'passenger';
 
@@ -99,9 +101,9 @@ function Home({ currentUser }) {
                     </p>
                     <p style={{ fontSize: 14, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       👤 ผู้สร้าง:
-                      {driverId ? (
+                      {driverPath ? (
                         <Link
-                          to={`/profile/${driverId}`}
+                          to={driverPath}
                           style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none', borderBottom: '1.5px dashed var(--accent)' }}
                         >
                           {driverName}

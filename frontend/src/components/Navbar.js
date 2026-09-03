@@ -5,8 +5,18 @@ function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // คำนวณสิทธิ์แอดมินอย่างปลอดภัย (รองรับทั้ง is_admin boolean และ role === 'admin')
+  const isAdmin = Boolean(
+    user && (user.is_admin || (user.role && user.role.toLowerCase() === 'admin'))
+  );
+
+  // สร้างลิงก์โปรไฟล์ให้ปลอดภัย (กัน /profile/undefined)
+  const profileId = user?.id || user?.user_id || user?._id;
+  const profilePath = profileId && profileId !== 'undefined' ? `/profile/${profileId}` : '/login';
+
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     onLogout();
     navigate('/login');
   };
@@ -87,7 +97,7 @@ function Navbar({ user, onLogout }) {
             >
               + สร้างทริป
             </Link>
-            {user?.is_admin && (
+            {isAdmin && (
               <Link
                 to="/admin"
                 className={isActive('/admin') ? 'neu-inset' : ''}
@@ -109,7 +119,7 @@ function Navbar({ user, onLogout }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {user && (
-            <Link to={`/profile/${user.id}`} style={{ textDecoration: 'none' }}>
+            <Link to={profilePath} style={{ textDecoration: 'none' }}>
               <div
                 className="neu-inset"
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px 6px 8px', borderRadius: 999, cursor: 'pointer' }}

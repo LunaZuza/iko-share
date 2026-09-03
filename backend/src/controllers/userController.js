@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { userResponse, parseUserId } = require('../utils/user');
 
 // ประกอบข้อมูลโปรไฟล์ + คะแนนรีวิว
 const buildProfile = async (id) => {
@@ -31,9 +32,13 @@ const buildProfile = async (id) => {
 // GET /api/users/profile/:id — ดึงข้อมูลผู้ใช้ รวม avg_rating และ total_reviews
 exports.getProfile = async (req, res) => {
   try {
-    const profile = await buildProfile(req.params.id);
+    const userId = parseUserId(req.params.id);
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'Invalid User ID' });
+    }
+    const profile = await buildProfile(userId);
     if (!profile) return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
-    res.json(profile);
+    res.json(userResponse(profile));
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ error: error.message });
@@ -43,9 +48,13 @@ exports.getProfile = async (req, res) => {
 // GET /api/users/:id — Route สำรองกัน 404
 exports.getUserById = async (req, res) => {
   try {
-    const profile = await buildProfile(req.params.id);
+    const userId = parseUserId(req.params.id);
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'Invalid User ID' });
+    }
+    const profile = await buildProfile(userId);
     if (!profile) return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
-    res.json(profile);
+    res.json(userResponse(profile));
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: error.message });
@@ -78,7 +87,7 @@ exports.updateProfile = async (req, res) => {
       'SELECT id, full_name, email, avatar_url, bio, phone, role, is_admin, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
-    res.json({ message: 'อัปเดตโปรไฟล์สำเร็จ', user: userResult.rows[0] });
+    res.json({ message: 'อัปเดตโปรไฟล์สำเร็จ', ...userResponse(userResult.rows[0]) });
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ error: 'ไม่สามารถอัปเดตโปรไฟล์ได้' });

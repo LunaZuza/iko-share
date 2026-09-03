@@ -8,12 +8,25 @@ import MyTrips from './pages/MyTrips';
 import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
 import api from './services/api';
+import { normalizeUser } from './utils/user';
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [serverNotice, setServerNotice] = useState('');
   const retryRef = useRef(null);
+
+  // อัปเดต user state + แคชลง localStorage (ทำให้ ค่าคงที่ต่อ session)
+  const cacheUser = (raw) => {
+    const u = normalizeUser(raw);
+    if (u) {
+      setUser(u);
+      localStorage.setItem('user', JSON.stringify(u));
+    } else {
+      setUser(null);
+      localStorage.removeItem('user');
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -23,11 +36,20 @@ function App() {
       return () => { mounted = false; };
     }
 
+    // ใช้ user ที่แคชไว้ตั้งต้น (กัน /profile/undefined ระหว่างโหลด)
+    try {
+      const cached = localStorage.getItem('user');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && (parsed.id || parsed.user_id)) setUser(parsed);
+      }
+    } catch (e) { /* ignore */ }
+
     const loadUser = async (attempt = 1) => {
       try {
         const res = await api.get('/auth/me');
         if (!mounted) return;
-        setUser(res.data);
+        cacheUser(res.data);
         setServerNotice('');
         setLoading(false);
       } catch (err) {
@@ -37,6 +59,7 @@ function App() {
         // เฉพาะ 401 เท่านั้นที่ logout — 5xx / ERR_NETWORK / timeout ไม่ logout
         if (status === 401) {
           localStorage.removeItem('token');
+          localStorage.removeItem('user');
           setUser(null);
           setServerNotice('');
           setLoading(false);
@@ -60,16 +83,17 @@ function App() {
   }, []);
 
   const handleLogin = (userData) => {
-    setUser(userData);
+    cacheUser(userData);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
   };
 
   const handleUserUpdated = (updatedUser) => {
-    setUser(updatedUser);
+    cacheUser(updatedUser);
   };
 
   if (loading) {

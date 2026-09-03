@@ -14,20 +14,29 @@ function Profile({ currentUser, onUserUpdated, onLogout }) {
   const [editForm, setEditForm] = useState({ full_name: '', phone: '', role: 'Both', avatar_url: '' });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const isOwnProfile = currentUser && currentUser.id === parseInt(id);
+  // กัน /profile/undefined — ถ้า id ไม่ดี ให้ fallback ไปใช้ id ของตัวเอง
+  const targetId = !id || id === 'undefined' ? currentUser?.id || currentUser?.user_id : id;
+  const validTargetId = targetId && targetId !== 'undefined';
+
+  const isOwnProfile = currentUser && validTargetId && parseInt(currentUser.id, 10) === parseInt(targetId, 10);
 
   useEffect(() => {
+    if (!validTargetId) {
+      // ไม่มี id ที่ใช้ได้ — แสดง fallback โดยไม่ต้องเรียก API / ไม่ throw console error
+      setLoading(false);
+      return;
+    }
     const fetchProfile = async () => {
       try {
         let res;
         // รองรับรูปแบบ Route ของ Backend ทั้ง 3 แบบ เพื่อป้องกัน 404 Error
         try {
-          res = await api.get(`/users/profile/${id}`);
+          res = await api.get(`/users/profile/${targetId}`);
         } catch (err1) {
           try {
-            res = await api.get(`/users/${id}`);
+            res = await api.get(`/users/${targetId}`);
           } catch (err2) {
-            res = await api.get(`/profile/${id}`);
+            res = await api.get(`/profile/${targetId}`);
           }
         }
 
@@ -35,14 +44,14 @@ function Profile({ currentUser, onUserUpdated, onLogout }) {
         setProfile(data);
         setBio(data.bio || '');
       } catch (err) {
-        console.error('ไม่สามารถดึงข้อมูลโปรไฟล์ได้:', err);
+        console.warn('ไม่สามารถดึงข้อมูลโปรไฟล์ได้:', err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProfile();
-  }, [id]);
+  }, [targetId, validTargetId]);
 
   const handleSaveBio = async () => {
     try {
