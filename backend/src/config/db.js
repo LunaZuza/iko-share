@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-require('dotenv').config();
+try { require('dotenv').config(); } catch (e) {}
 
 // ตรวจสอบว่ามี DATABASE_URL (สำหรับ Vercel / Neon) หรือไม่
 const isProduction = Boolean(process.env.DATABASE_URL);

@@ -1,4 +1,4 @@
-require('dotenv').config();
+try { require('dotenv').config(); } catch (e) {}
 const http = require('http');
 const express = require('express');
 const cors = require('cors');
