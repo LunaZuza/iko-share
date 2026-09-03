@@ -1,7 +1,11 @@
 import axios from 'axios';
 
-// ตั้งค่า REACT_APP_API_URL ในไฟล์ .env หรือ env ของ Vercel เพื่อชี้ไปยัง Backend จริง
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Production (Vercel, single-domain): ใช้เส้นทางสัมพัทธ์ /api ไปยัง backend บน origin เดียวกัน
+// (ทำให้ React เรียก /api/... ได้โดยไม่ต้องกังวลเรื่อง CORS)
+// Local development: ใช้ http://localhost:5000/api
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api');
 
 const api = axios.create({
   baseURL: API_URL,

@@ -105,8 +105,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`🚀 Iko Share server running on port ${PORT}`);
-});
+// บน Vercel (serverless) ห้าม listen เอง — ให้แพลตฟอร์มเรียกใช้ app ที่ export ออกไป
+// สำหรับ local development เท่านั้นที่จะ listen
+if (!process.env.VERCEL) {
+  server.listen(PORT, () => {
+    console.log(`🚀 Iko Share server running on port ${PORT}`);
+  });
+}
 
 module.exports = app;
