@@ -78,16 +78,21 @@ exports.login = async (req, res) => {
 // GET /api/auth/me — ข้อมูลผู้ใช้ปัจจุบัน
 exports.getMe = async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ success: false, message: 'User not found' });
+    }
+
     const result = await pool.query(
       'SELECT id, full_name, email, avatar_url, bio, phone, role, is_admin, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
+      return res.status(404).json({ success: false, message: 'User not found in database' });
     }
+
     res.json(userResponse(result.rows[0]));
   } catch (error) {
-    console.error('Get me error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Error in /auth/me:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching user profile' });
   }
 };

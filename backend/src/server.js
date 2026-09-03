@@ -87,8 +87,11 @@ app.use((err, req, res, next) => {
   console.error('Server error:', err);
   const status = err.status || 500;
   res.status(status).json({
+    success: false,
     error: status >= 500 ? 'เกิดข้อผิดพลาดในระบบ' : err.message,
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    message: status >= 500
+      ? (process.env.NODE_ENV === 'development' ? err.message : 'เกิดข้อผิดพลาดในระบบ')
+      : err.message,
   });
 });
 
