@@ -36,7 +36,14 @@ const isTripMember = async (tripId, userId) => {
 // GET /api/trips — ดึงทริปทั้งหมด พร้อม driver_name/driver_id และ user_role_in_trip (ถ้ามี token)
 exports.getTrips = async (req, res) => {
   try {
-    const result = await pool.query(`${TRIP_SELECT} ORDER BY t.created_at DESC`);
+    // แสดงทริปที่ยัง"ใช้งาน": ยังไม่ถึงเวลาออกเดินทาง หรือเพิ่งออกไปไม่เกิน 1 ชั่วโมง
+    // (ใช้เวลากรุงเทพ / UTC+7 ผ่าน AT TIME ZONE เพื่อไม่ให้เพี้ยนจาก NOW())
+    const result = await pool.query(
+      `${TRIP_SELECT}
+       WHERE t.departure_time IS NULL
+          OR (t.departure_time AT TIME ZONE 'Asia/Bangkok') >= NOW() - INTERVAL '1 hour'
+       ORDER BY t.created_at DESC`
+    );
     let trips = result.rows;
     const userId = req.user?.id;
 

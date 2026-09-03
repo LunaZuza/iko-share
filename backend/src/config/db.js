@@ -30,4 +30,9 @@ pool.connect((err, client, release) => {
   }
 });
 
+// กัน process crash เมื่อ idle connection หลุดระหว่างที่เซิร์ฟเวอร์ sleep
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle DB client:', err.message);
+});
+
 module.exports = pool;

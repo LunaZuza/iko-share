@@ -19,4 +19,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Response interceptor — logout ก่อนเวลา (auto-logout) ต้องเกิดจาก 401 เท่านั้น
+// ไม่ redirect/logout บน 500/502/503/504, ERR_NETWORK หรือ timeout (ECONNABORTED)
+// เพื่อให้ผู้ใช้ยัง login ค้างไว้ระหว่างที่ Render/Neon กำลังเริ่มต้นทำงาน
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    if (status === 401) {
+      localStorage.removeItem('token');
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;
